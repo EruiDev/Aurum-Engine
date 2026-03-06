@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	currencies "github.com/bojanz/currency"
 	"github.com/google/uuid"
 )
 
@@ -29,7 +30,7 @@ var allowedTransitions = map[PaymentStatus][]PaymentStatus{
 type Payment struct {
 	ID             uuid.UUID
 	IdempotencyKey string
-	Amout          int64
+	Amount         int64
 	Currency       string // should be compatible with ISO 4217, might use library later
 	Status         PaymentStatus
 	MerchantID     uuid.UUID
@@ -57,8 +58,40 @@ func (p *Payment) TransitionTo(new PaymentStatus) error {
 func (p *Payment) IsTerminal() bool {
 	switch p.Status {
 	case StatusVoided, StatusFailed, StatusRefunded:
-		return false
-	default:
 		return true
+	default:
+		return false
 	}
+}
+
+func NewPayment(
+	idempotencyKey string,
+	amout int64,
+	currency string,
+	merchantID uuid.UUID,
+	customerID uuid.UUID,
+) (*Payment, error) {
+	if idempotencyKey == "" {
+		return nil, ErrInvalidImportency
+	}
+	ok := currencies.IsValid(currency)
+	if !ok {
+		return nil, ErrInvalidCurrency
+	}
+	if amout <= 0 {
+		return nil, ErrInvalidAmount
+	}
+	time := time.Now()
+	return &Payment{
+		ID:             uuid.New(),
+		IdempotencyKey: idempotencyKey,
+		Amount:         amout,
+		Currency:       currency,
+		Status:         StatusInitiated,
+		MerchantID:     merchantID,
+		CustomerID:     customerID,
+		CreatedAt:      time,
+		UpdatedAt:      time,
+		Metadata:       make(map[string]string),
+	}, nil
 }
