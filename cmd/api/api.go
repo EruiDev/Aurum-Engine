@@ -2,13 +2,13 @@ package main
 
 import (
 	"aurum/internal/db"
-	"aurum/internal/domain"
-	"fmt"
+	"aurum/internal/handler"
+	"aurum/internal/repository"
+	"aurum/internal/service"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func main() {
@@ -21,14 +21,28 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	defer database.Conn.Close()
+	defer database.Close()
 	database.SetParams(25, 10, 5*time.Minute)
 
-	state, err := domain.NewPayment("test", 10, "EUR", uuid.New(), uuid.New())
-	if err != nil {
-		slog.Error("failed to open db", "err", err)
-		os.Exit(1)
+	paymentRepo := repository.NewPaymentRepository(database.Conn())
+	outboxRepo := repository.NewOutboxRepository(database.Conn())
+	paymentService := service.NewPaymentService(database, paymentRepo, outboxRepo)
+	paymentHandler := handler.NewHandler(paymentService)
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /payments", paymentHandler.CreatePayment)
+
+	server := &http.Server{
+		Addr:         ":" + "8080", // TODO create fallback for env file
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	fmt.Println(state)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		slog.Error("server failed to start", "err", err)
+		os.Exit(1)
+	}
 }
