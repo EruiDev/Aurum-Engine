@@ -40,19 +40,19 @@ type Payment struct {
 	Metadata       map[string]string
 }
 
-func (p *Payment) TransitionTo(new PaymentStatus) error {
+func (p *Payment) TransitionTo(to PaymentStatus) error {
 	allowed, ok := allowedTransitions[p.Status]
 	if !ok {
 		return ErrInvalidTransition
 	}
 	for _, val := range allowed {
-		if val == new {
-			p.Status = new
+		if val == to {
+			p.Status = to
 			p.UpdatedAt = time.Now()
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: %s -> %s", ErrInvalidTransition, p.Status, new)
+	return fmt.Errorf("%w: %s -> %s", ErrInvalidTransition, p.Status, to)
 }
 
 func (p *Payment) IsTerminal() bool {
