@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -38,6 +39,32 @@ type Payment struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	Metadata       map[string]string
+}
+
+type OutboxEvent struct {
+	ID          uuid.UUID
+	AggregateID uuid.UUID
+	EventType   string
+	Payload     []byte
+	Published   bool
+	CreatedAt   time.Time
+	PublishedAt *time.Time
+}
+
+func NewOutboxEvent(payment *Payment, eventType string) (*OutboxEvent, error) {
+	payload, err := json.Marshal(payment)
+	if err != nil {
+		return nil, err
+	}
+
+	return &OutboxEvent{
+		ID:          uuid.New(),
+		AggregateID: payment.ID,
+		EventType:   eventType,
+		Payload:     payload,
+		Published:   false,
+		CreatedAt:   time.Now(),
+	}, nil
 }
 
 func (p *Payment) TransitionTo(to PaymentStatus) error {
