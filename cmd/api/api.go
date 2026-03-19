@@ -16,13 +16,17 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	// Create db with SQL module
 	database, err := db.New()
 	if err != nil {
 		os.Exit(1)
 	}
 	defer database.Close()
 	database.SetParams(25, 10, 5*time.Minute)
+	err = database.RunMigrations()
+	if err != nil {
+		slog.Error("migration failed: ", err)
+		os.Exit(1)
+	}
 
 	paymentRepo := repository.NewPaymentRepository(database.Conn())
 	outboxRepo := repository.NewOutboxRepository(database.Conn())
