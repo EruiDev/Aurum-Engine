@@ -27,7 +27,8 @@ func (r *PaymentRepository) Create(ctx context.Context, tx *sql.Tx, p *domain.Pa
 func (r *PaymentRepository) FindByIdempotencyKey(ctx context.Context, key string) (*domain.Payment, error) {
 	p := &domain.Payment{}
 	err := r.db.QueryRowContext(ctx, `
-	SELECT * FROM payments WHERE idempotency_key = $1`, key).Scan(
+	SELECT  id, idempotency_key, amount, currency, status, merchant_id, customer_id, created_at, updated_at
+	FROM payments WHERE idempotency_key = $1`, key).Scan(
 		&p.ID, &p.IdempotencyKey, &p.Amount, &p.Currency, &p.Status, &p.MerchantID, &p.CustomerID, &p.CreatedAt, &p.UpdatedAt,
 	)
 

@@ -36,6 +36,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /payments", paymentHandler.CreatePayment)
+	mux.HandleFunc("GET /payments/{id}", paymentHandler.GetPayment)
 
 	server := &http.Server{
 		Addr:         ":" + "8080", // TODO create fallback for env file
@@ -45,6 +46,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Create proper shutdown of server with signal handling
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server failed to start", "err", err)
 		os.Exit(1)

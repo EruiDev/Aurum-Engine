@@ -61,5 +61,5 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req CreatePaymentReq
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return p, nil
 }

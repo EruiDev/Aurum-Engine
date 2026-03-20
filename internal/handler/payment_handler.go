@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"aurum/internal/domain"
 	"aurum/internal/service"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 )
@@ -28,14 +30,32 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "missing_idempotency_key", "Idempotency-Key header is required")
 		return
 	}
-	_, err := h.service.CreatePayment(r.Context(), req)
-	if err != nil { // TODO add all messages for all errors
-		h.writeError(w, http.StatusInternalServerError, "test", "test")
-		slog.Error("Error creating the payment: ", "err", err.Error())
+	res, err := h.service.CreatePayment(r.Context(), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrInvalidAmount):
+			h.writeError(w, http.StatusUnprocessableEntity, "invalid_amount", err.Error())
+		case errors.Is(err, domain.ErrInvalidCurrency):
+			h.writeError(w, http.StatusUnprocessableEntity, "invalid_currency", err.Error())
+		case errors.Is(err, domain.ErrInvalidCustomerID):
+			h.writeError(w, http.StatusUnprocessableEntity, "invalid_customer_id", err.Error())
+		case errors.Is(err, domain.ErrInvalidMerchantID):
+			h.writeError(w, http.StatusUnprocessableEntity, "invalid_merchant_id", err.Error())
+		default:
+			slog.Error("unexpected error creating payment", "err", err, "path", r.URL.Path, "method", r.Method)
+			h.writeError(w, http.StatusInternalServerError, "interal_error", "unexpected error")
+		}
 		return
 	}
-	h.writeJSON(w, http.StatusAccepted, req)
+	h.writeJSON(w, http.StatusCreated, res)
+	slog.Info("new payment created with idempotency key:", "idempotency_key:", res.IdempotencyKey)
 }
+
+func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
+	
+}
+
+// Helper functions
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

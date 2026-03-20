@@ -108,6 +108,12 @@ func NewPayment(
 	if amout <= 0 {
 		return nil, ErrInvalidAmount
 	}
+	if merchantID == uuid.Nil {
+		return nil, ErrInvalidMerchantID
+	}
+	if customerID == uuid.Nil {
+		return nil, ErrInvalidCustomerID
+	}
 	time := time.Now()
 	return &Payment{
 		ID:             uuid.New(),
