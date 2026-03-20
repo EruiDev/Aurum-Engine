@@ -31,7 +31,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	_, err := h.service.CreatePayment(r.Context(), req)
 	if err != nil { // TODO add all messages for all errors
 		h.writeError(w, http.StatusInternalServerError, "test", "test")
-		slog.Error("Error creating the payment: ", err)
+		slog.Error("Error creating the payment: ", "err", err.Error())
 		return
 	}
 	h.writeJSON(w, http.StatusAccepted, req)

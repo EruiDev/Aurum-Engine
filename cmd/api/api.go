@@ -24,7 +24,7 @@ func main() {
 	database.SetParams(25, 10, 5*time.Minute)
 	err = database.RunMigrations()
 	if err != nil {
-		slog.Error("migration failed: ", err)
+		slog.Error("migration failed: ", "err", err.Error())
 		os.Exit(1)
 	}
 
