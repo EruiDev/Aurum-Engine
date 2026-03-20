@@ -7,6 +7,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -31,6 +33,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.service.CreatePayment(r.Context(), req)
+
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrInvalidAmount):
@@ -47,12 +50,23 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	h.writeJSON(w, http.StatusCreated, res)
 	slog.Info("new payment created with idempotency key:", "idempotency_key:", res.IdempotencyKey)
 }
 
 func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
-	
+	id := (r.PathValue("id"))
+	err := uuid.Validate(id)
+
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid_id", "id is not a valid UUID")
+		return
+	}
+
+	p, err := h.service.GetPayment(r.Context(), id)
+
+	h.writeJSON(w, http.StatusOK, p)
 }
 
 // Helper functions

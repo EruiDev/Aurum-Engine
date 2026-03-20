@@ -10,9 +10,9 @@ import (
 )
 
 type PaymentService struct {
-	db       *db.DB
-	payments *repository.PaymentRepository
-	outbox   *repository.OutboxRepository
+	db          *db.DB
+	repo        *repository.PaymentRepository
+	outbox_repo *repository.OutboxRepository
 }
 
 func NewPaymentService(
@@ -20,11 +20,11 @@ func NewPaymentService(
 	payments *repository.PaymentRepository,
 	outbox *repository.OutboxRepository,
 ) *PaymentService {
-	return &PaymentService{db: db, payments: payments, outbox: outbox}
+	return &PaymentService{db: db, repo: payments, outbox_repo: outbox}
 }
 
 func (s *PaymentService) CreatePayment(ctx context.Context, req CreatePaymentRequest) (*domain.Payment, error) {
-	p, err := s.payments.FindByIdempotencyKey(ctx, req.IdempotencyKey)
+	p, err := s.repo.FindByIdempotencyKey(ctx, req.IdempotencyKey)
 
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, err
@@ -50,10 +50,10 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req CreatePaymentReq
 	}
 
 	err = s.db.WithTransaction(ctx, func(tx *sql.Tx) error {
-		if err := s.payments.Create(ctx, tx, p); err != nil {
+		if err := s.repo.Create(ctx, tx, p); err != nil {
 			return err
 		}
-		if err := s.outbox.Insert(ctx, tx, event); err != nil {
+		if err := s.outbox_repo.Insert(ctx, tx, event); err != nil {
 			return err
 		}
 		return nil
@@ -62,4 +62,8 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req CreatePaymentReq
 		return nil, err
 	}
 	return p, nil
+}
+
+func (s *PaymentService) GetPayment(ctx context.Context, id string) (*domain.Payment, error) {
+	return nil, nil
 }
