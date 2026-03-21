@@ -37,11 +37,8 @@ func main() {
 
 	mux.HandleFunc("POST /payments", paymentHandler.CreatePayment)
 	mux.HandleFunc("GET /payments/{id}", paymentHandler.GetPayment)
-	// mux.HandleFunc("POST /payments/{id}/authorize",)
+	mux.HandleFunc("POST /payments/{id}/{action}", paymentHandler.TransitionPayment)
 	// mux.HandleFunc("GET /payments",               )
-	// mux.HandleFunc("POST /payments/{id}/capture", )
-	// mux.HandleFunc("POST /payments/{id}/void",    )
-	// mux.HandleFunc("POST /payments/{id}/refund",  )
 	// mux.HandleFunc("GET /health",                 )
 	// mux.HandleFunc("GET /metrics",				 ) Might add for Prometheus handling, potential graphana
 
