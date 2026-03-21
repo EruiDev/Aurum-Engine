@@ -65,5 +65,9 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req CreatePaymentReq
 }
 
 func (s *PaymentService) GetPayment(ctx context.Context, id string) (*domain.Payment, error) {
-	return nil, nil
+	p, err := s.repo.GetPayment(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
