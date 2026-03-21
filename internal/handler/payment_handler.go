@@ -56,20 +56,76 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
-	id := (r.PathValue("id"))
-	err := uuid.Validate(id)
-
+	id, err := h.validateID(w, r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_id", "id is not a valid UUID")
 		return
 	}
 
 	p, err := h.service.GetPayment(r.Context(), id)
 
+	if errors.Is(err, domain.ErrNotFound) {
+		h.writeError(w, http.StatusNotFound, "id_not_found", "the id provided doesn't have an attached payment")
+		return
+	} else if err != nil {
+		slog.Error("unexpected error getting payment", "err", err)
+		h.writeError(w, http.StatusInternalServerError, "interal_error", "unexpected error")
+	}
+
 	h.writeJSON(w, http.StatusOK, p)
 }
 
+func (h *Handler) TransitionPayment(w http.ResponseWriter, r *http.Request) {
+	id, err := h.validateID(w, r)
+	if err != nil {
+		return
+	}
+
+	action := r.PathValue("action")
+
+	var payment *domain.Payment
+
+	switch action {
+	case "authorize":
+		payment, err = h.service.AuthorizePayment(r.Context(), id)
+	case "capture":
+		payment, err = h.service.CapturePayment(r.Context(), id)
+	case "void":
+		payment, err = h.service.VoidPayment(r.Context(), id)
+	//case "refund":
+	//payment, err = h.service.RefundPayment(r.Context(), id)
+	default:
+		h.writeError(w, http.StatusNotFound, "unknown_action", "unknown action: "+action)
+		return
+	}
+
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			h.writeError(w, http.StatusNotFound, "not_found", "payment not found")
+		case errors.Is(err, domain.ErrInvalidTransition):
+			h.writeError(w, http.StatusUnprocessableEntity, "invalid_transition", err.Error())
+		default:
+			slog.Error("failed to transition payment", "err", err, "action", action, "id", id)
+			h.writeError(w, http.StatusInternalServerError, "internal_error", "unexpected error")
+		}
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, payment)
+}
+
 // Helper functions
+
+func (h *Handler) validateID(w http.ResponseWriter, r *http.Request) (string, error) {
+	id := (r.PathValue("id"))
+	err := uuid.Validate(id)
+
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid_id", "id is not a valid UUID")
+		return "", err
+	}
+	return id, nil
+}
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
