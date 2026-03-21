@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 )
 
 type PaymentService struct {
@@ -65,9 +66,50 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req CreatePaymentReq
 }
 
 func (s *PaymentService) GetPayment(ctx context.Context, id string) (*domain.Payment, error) {
-	p, err := s.repo.GetPayment(ctx, id)
+	p, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return p, nil
+}
+
+func (s *PaymentService) CapturePayment(ctx context.Context, id string) (*domain.Payment, error) {
+	return s.transition(ctx, domain.StatusCaptured, id)
+}
+
+func (s *PaymentService) AuthorizePayment(ctx context.Context, id string) (*domain.Payment, error) {
+	return s.transition(ctx, domain.StatusAuthorized, id)
+}
+
+func (s *PaymentService) VoidPayment(ctx context.Context, id string) (*domain.Payment, error) {
+	return s.transition(ctx, domain.StatusVoided, id)
+}
+
+func (s *PaymentService) transition(ctx context.Context, to domain.PaymentStatus, id string) (*domain.Payment, error) {
+	var payment *domain.Payment
+
+	err := s.db.WithTransaction(ctx, func(tx *sql.Tx) error {
+		var err error
+		payment, err = s.repo.FindByIDForUpdate(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+
+		if err = payment.TransitionTo(to); err != nil {
+			return err
+		}
+
+		if err = s.repo.UpdateStatus(ctx, tx, payment); err != nil {
+			return err
+		}
+
+		event, err := domain.NewOutboxEvent(payment, "payment."+strings.ToLower(string(to)))
+		if err != nil {
+			return err
+		}
+
+		return s.outbox_repo.Insert(ctx, tx, event)
+	})
+
+	return payment, err
 }
