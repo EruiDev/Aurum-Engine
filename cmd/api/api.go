@@ -5,11 +5,36 @@ import (
 	"aurum/internal/handler"
 	"aurum/internal/repository"
 	"aurum/internal/service"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 )
+
+func healthHandler(database *db.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		status := "ok"
+		dbStatus := "ok"
+		code := http.StatusOK
+
+		if err := database.Ping(r.Context()); err != nil {
+			status = "degraded"
+			dbStatus = "unreachable"
+			code = http.StatusServiceUnavailable
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		json.NewEncoder(w).Encode(struct {
+			Status string `json:"status"`
+			DB     string `json:"db"`
+		}{
+			Status: status,
+			DB:     dbStatus,
+		})
+	}
+}
 
 func main() {
 	// Setting up the logger to be in JSON format -> might redirect to file
@@ -39,7 +64,7 @@ func main() {
 	mux.HandleFunc("GET /payments/{id}", paymentHandler.GetPayment)
 	mux.HandleFunc("POST /payments/{id}/{action}", paymentHandler.TransitionPayment)
 	// mux.HandleFunc("GET /payments",               )
-	// mux.HandleFunc("GET /health",                 )
+	mux.HandleFunc("GET /health", healthHandler(database))
 	// mux.HandleFunc("GET /metrics",				 ) Might add for Prometheus handling, potential graphana
 
 	server := &http.Server{

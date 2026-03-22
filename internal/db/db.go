@@ -50,6 +50,10 @@ func (db *DB) Conn() *sql.DB {
 	return db.conn
 }
 
+func (db *DB) Ping(ctx context.Context) error {
+	return db.conn.PingContext(ctx)
+}
+
 func (db *DB) SetParams(maxOpenConns int, maxIdelConns int, connMaxLifetime time.Duration) {
 	db.conn.SetMaxOpenConns(maxOpenConns)
 	db.conn.SetMaxIdleConns(maxIdelConns)
