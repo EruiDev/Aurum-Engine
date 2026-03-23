@@ -36,6 +36,14 @@ func healthHandler(database *db.DB) http.HandlerFunc {
 	}
 }
 
+func getPort() string {
+	if os.Getenv("PORT") == "" {
+		return "8080"
+	} else {
+		return os.Getenv("PORT")
+	}
+}
+
 func main() {
 	// Setting up the logger to be in JSON format -> might redirect to file
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -68,7 +76,7 @@ func main() {
 	// mux.HandleFunc("GET /metrics",				 ) Might add for Prometheus handling, potential graphana
 
 	server := &http.Server{
-		Addr:         ":" + "8080", // TODO create fallback for env file
+		Addr:         ":" + getPort(),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
