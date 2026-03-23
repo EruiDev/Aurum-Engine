@@ -5,10 +5,13 @@ import (
 	"aurum/internal/handler"
 	"aurum/internal/repository"
 	"aurum/internal/service"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -37,11 +40,10 @@ func healthHandler(database *db.DB) http.HandlerFunc {
 }
 
 func getPort() string {
-	if os.Getenv("PORT") == "" {
-		return "8080"
-	} else {
-		return os.Getenv("PORT")
+	if port := os.Getenv("PORT"); port != "" {
+		return port
 	}
+	return "8080"
 }
 
 func main() {
@@ -83,9 +85,24 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Create proper shutdown of server with signal handling
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		slog.Error("server failed to start", "err", err)
-		os.Exit(1)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		slog.Info("server starting", "port", server.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("server failed to start", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	sig := <-quit
+	slog.Info("shutdown signal received", "signal", sig)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		slog.Error("server shutdown failed", "err", err)
 	}
+
+	slog.Info("shutdown complete")
 }
