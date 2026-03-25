@@ -3,8 +3,10 @@ package main
 import (
 	"aurum/internal/db"
 	"aurum/internal/handler"
+	"aurum/internal/publisher"
 	"aurum/internal/repository"
 	"aurum/internal/service"
+	"aurum/internal/worker"
 	"context"
 	"encoding/json"
 	"log/slog"
@@ -67,15 +69,17 @@ func main() {
 	outboxRepo := repository.NewOutboxRepository(database.Conn())
 	paymentService := service.NewPaymentService(database, paymentRepo, outboxRepo)
 	paymentHandler := handler.NewHandler(paymentService)
+	publisher := publisher.NewKafkaPublisher(([]string{os.Getenv("KAFKA_BROKERS")}))
+	worker := worker.NewOutboxWorker(outboxRepo, publisher)
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /payments", paymentHandler.CreatePayment)
 	mux.HandleFunc("GET /payments/{id}", paymentHandler.GetPayment)
 	mux.HandleFunc("POST /payments/{id}/{action}", paymentHandler.TransitionPayment)
-	// mux.HandleFunc("GET /payments",               )
+	// mux.HandleFunc("GET /payments",                )
 	mux.HandleFunc("GET /health", healthHandler(database))
-	// mux.HandleFunc("GET /metrics",				 ) Might add for Prometheus handling, potential graphana
+	//mux.HandleFunc("GET /metrics", promhttp.Handler())
 
 	server := &http.Server{
 		Addr:         ":" + getPort(),
@@ -84,6 +88,13 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		slog.Info("starting worker")
+		worker.Run(ctx)
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -98,6 +109,7 @@ func main() {
 
 	sig := <-quit
 	slog.Info("shutdown signal received", "signal", sig)
+	cancel()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
