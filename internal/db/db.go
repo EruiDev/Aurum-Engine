@@ -23,8 +23,8 @@ type DB struct {
 
 func New() (*DB, error) {
 	if err := godotenv.Load(); err != nil {
-		slog.Warn("no .env file found, using environment variables")
-	} // TODO when changed into docker just get it from env
+		slog.Info("no .env file found, using environment variables")
+	}
 
 	conn, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {

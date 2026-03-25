@@ -139,4 +139,3 @@ func (h *Handler) writeError(w http.ResponseWriter, status int, code, message st
 		Message: message,
 	})
 }
-
