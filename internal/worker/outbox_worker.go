@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"aurum/internal/metrics"
 	"aurum/internal/publisher"
 	"aurum/internal/repository"
 	"context"
@@ -43,6 +44,8 @@ func (w *OutboxWorker) processEvents(ctx context.Context) {
 	defer cancel()
 
 	events, err := w.outbox.FetchUnpublished(batchCtx, 100)
+
+	metrics.OutboxPendingEvents.Set(float64(len(events)))
 
 	if err != nil {
 		slog.Error("outbox: failed to fetch events", "error", err)

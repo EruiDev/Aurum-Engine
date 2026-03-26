@@ -3,6 +3,7 @@ package service
 import (
 	"aurum/internal/db"
 	"aurum/internal/domain"
+	"aurum/internal/metrics"
 	"aurum/internal/repository"
 	"context"
 	"database/sql"
@@ -62,6 +63,8 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req CreatePaymentReq
 	if err != nil {
 		return nil, err
 	}
+
+	metrics.PaymentsCreatedTotal.WithLabelValues(p.Currency).Inc()
 	return p, nil
 }
 
@@ -87,6 +90,7 @@ func (s *PaymentService) VoidPayment(ctx context.Context, id string) (*domain.Pa
 
 func (s *PaymentService) transition(ctx context.Context, to domain.PaymentStatus, id string) (*domain.Payment, error) {
 	var payment *domain.Payment
+	var prevStatus domain.PaymentStatus
 
 	err := s.db.WithTransaction(ctx, func(tx *sql.Tx) error {
 		var err error
@@ -94,6 +98,7 @@ func (s *PaymentService) transition(ctx context.Context, to domain.PaymentStatus
 		if err != nil {
 			return err
 		}
+		prevStatus = payment.Status
 
 		if err = payment.TransitionTo(to); err != nil {
 			return err
@@ -111,5 +116,11 @@ func (s *PaymentService) transition(ctx context.Context, to domain.PaymentStatus
 		return s.outbox_repo.Insert(ctx, tx, event)
 	})
 
-	return payment, err
+	if err != nil {
+		return nil, err
+	}
+
+	metrics.PaymentTransitionTotal.WithLabelValues(string(prevStatus), string(to))
+
+	return payment, nil
 }

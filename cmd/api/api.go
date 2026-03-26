@@ -3,6 +3,7 @@ package main
 import (
 	"aurum/internal/db"
 	"aurum/internal/handler"
+	"aurum/internal/middleware"
 	"aurum/internal/publisher"
 	"aurum/internal/repository"
 	"aurum/internal/service"
@@ -15,6 +16,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func healthHandler(database *db.DB) http.HandlerFunc {
@@ -79,11 +82,11 @@ func main() {
 	mux.HandleFunc("POST /payments/{id}/{action}", paymentHandler.TransitionPayment)
 	// mux.HandleFunc("GET /payments",                )
 	mux.HandleFunc("GET /health", healthHandler(database))
-	//mux.HandleFunc("GET /metrics", promhttp.Handler())
+	mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)
 
 	server := &http.Server{
 		Addr:         ":" + getPort(),
-		Handler:      mux,
+		Handler:      middleware.Metrics(mux),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
