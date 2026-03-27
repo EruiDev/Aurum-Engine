@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -47,3 +49,10 @@ var (
 		[]string{"operation"},
 	)
 )
+
+func TrackDB(operation string) func() {
+	start := time.Now()
+	return func() {
+		DBQueryDuration.WithLabelValues(operation).Observe(time.Since(start).Seconds())
+	}
+}

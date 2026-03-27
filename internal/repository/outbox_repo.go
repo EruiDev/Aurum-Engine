@@ -2,6 +2,7 @@ package repository
 
 import (
 	"aurum/internal/domain"
+	"aurum/internal/metrics"
 	"context"
 	"database/sql"
 	"fmt"
@@ -18,6 +19,7 @@ func NewOutboxRepository(db *sql.DB) *OutboxRepository {
 }
 
 func (r *OutboxRepository) Insert(ctx context.Context, tx *sql.Tx, event *domain.OutboxEvent) error {
+	defer metrics.TrackDB("outbox.insert")()
 	_, err := tx.ExecContext(ctx, `
 	INSERT INTO outbox_events (id, aggregate_id, event_type, payload, published, created_at)
 	VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -29,6 +31,8 @@ func (r *OutboxRepository) Insert(ctx context.Context, tx *sql.Tx, event *domain
 }
 
 func (r *OutboxRepository) FetchUnpublished(ctx context.Context, amount int) ([]domain.OutboxEvent, error) {
+	defer metrics.TrackDB("payment.fetch_unpublished")()
+
 	// Have to add transaction for Locked
 	rows, err := r.db.QueryContext(ctx, `
 	SELECT id, aggregate_id, event_type, payload, created_at
@@ -63,6 +67,7 @@ func (r *OutboxRepository) FetchUnpublished(ctx context.Context, amount int) ([]
 }
 
 func (r *OutboxRepository) MarkPublished(ctx context.Context, id uuid.UUID) error {
+	defer metrics.TrackDB("outbox.mark_published")()
 	_, err := r.db.ExecContext(ctx, `
 	UPDATE outbox_events
 	SET published = true,
