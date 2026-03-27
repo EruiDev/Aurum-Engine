@@ -6,6 +6,7 @@ require (
 	github.com/bojanz/currency v1.4.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
+	github.com/segmentio/kafka-go v0.4.50
 	github.com/joho/godotenv v1.5.1
 )
 
@@ -23,7 +24,6 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/segmentio/kafka-go v0.4.50 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
