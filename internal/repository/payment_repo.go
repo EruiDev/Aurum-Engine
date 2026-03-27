@@ -2,6 +2,7 @@ package repository
 
 import (
 	"aurum/internal/domain"
+	"aurum/internal/metrics"
 	"context"
 	"database/sql"
 	"errors"
@@ -17,6 +18,7 @@ func NewPaymentRepository(db *sql.DB) *PaymentRepository {
 }
 
 func (r *PaymentRepository) Create(ctx context.Context, tx *sql.Tx, p *domain.Payment) error {
+	defer metrics.TrackDB("payment.create")()
 	_, err := tx.ExecContext(ctx, `
         INSERT INTO payments (id, idempotency_key, amount, currency, status, merchant_id, customer_id, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -25,6 +27,7 @@ func (r *PaymentRepository) Create(ctx context.Context, tx *sql.Tx, p *domain.Pa
 }
 
 func (r *PaymentRepository) FindByIdempotencyKey(ctx context.Context, key string) (*domain.Payment, error) {
+	defer metrics.TrackDB("payment.find_by_idempotency_key")()
 	p := &domain.Payment{}
 	err := r.db.QueryRowContext(ctx, `
 	SELECT id, idempotency_key, amount, currency, status, merchant_id, customer_id, created_at, updated_at
@@ -42,6 +45,7 @@ func (r *PaymentRepository) FindByIdempotencyKey(ctx context.Context, key string
 }
 
 func (r *PaymentRepository) FindByID(ctx context.Context, id string) (*domain.Payment, error) {
+	defer metrics.TrackDB("payment.find_by_id")()
 	p := &domain.Payment{}
 	err := r.db.QueryRowContext(ctx, `
 	SELECT id, idempotency_key, amount, currency, status, merchant_id, customer_id, created_at, updated_at
@@ -58,6 +62,7 @@ func (r *PaymentRepository) FindByID(ctx context.Context, id string) (*domain.Pa
 }
 
 func (r *PaymentRepository) FindByIDForUpdate(ctx context.Context, tx *sql.Tx, id string) (*domain.Payment, error) {
+	defer metrics.TrackDB("payment.find_by_id_for_update")()
 	p := &domain.Payment{}
 	err := tx.QueryRowContext(ctx, `
 	SELECT id, idempotency_key, amount, currency, status, merchant_id, customer_id, created_at, updated_at
@@ -74,6 +79,7 @@ func (r *PaymentRepository) FindByIDForUpdate(ctx context.Context, tx *sql.Tx, i
 }
 
 func (r *PaymentRepository) UpdateStatus(ctx context.Context, tx *sql.Tx, p *domain.Payment) error {
+	defer metrics.TrackDB("payment.update_status")()
 	result, err := tx.ExecContext(ctx, `
 		UPDATE payments
 		SET status = $1, updated_at = $2
