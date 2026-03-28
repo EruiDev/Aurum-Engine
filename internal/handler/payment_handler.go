@@ -45,7 +45,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, domain.ErrInvalidMerchantID):
 			h.writeError(w, http.StatusUnprocessableEntity, "invalid_merchant_id", err.Error())
 		default:
-			slog.Error("unexpected error creating payment", "err", err, "method", r.Method)
+			slog.Error("unexpected error creating payment", "err", err)
 			h.writeError(w, http.StatusInternalServerError, "interal_error", "unexpected error")
 		}
 		return
