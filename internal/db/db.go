@@ -35,7 +35,9 @@ func New() (*DB, error) {
 	err = conn.Ping()
 	if err != nil {
 		slog.Error("failed to ping db", "err", err)
-		conn.Close()
+		if pingErr := conn.Close(); pingErr != nil { // <- pingErr, no err
+			return nil, fmt.Errorf("ping failed: %w, close failed: %v", err, pingErr)
+		}
 		return nil, err
 	}
 
@@ -67,7 +69,9 @@ func (db *DB) WithTransaction(ctx context.Context, fn func(*sql.Tx) error) error
 	}
 
 	if err := fn(tx); err != nil {
-		tx.Rollback()
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return fmt.Errorf("tx failed: %w, rollback failed: %v", err, rbErr)
+		}
 		return err
 	}
 	return tx.Commit()

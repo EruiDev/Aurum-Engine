@@ -34,13 +34,17 @@ func healthHandler(database *db.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		json.NewEncoder(w).Encode(struct {
+		if err := json.NewEncoder(w).Encode(struct {
 			Status string `json:"status"`
 			DB     string `json:"db"`
 		}{
 			Status: status,
 			DB:     dbStatus,
-		})
+		}); err != nil {
+			status = "degraded"
+			dbStatus = "unreachable"
+			code = http.StatusServiceUnavailable
+		}
 	}
 }
 
@@ -60,7 +64,13 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	defer database.Close()
+
+	defer func() {
+		if err := database.Close(); err != nil {
+			slog.Error("failed to close database", "err", err)
+		}
+	}()
+
 	database.SetParams(25, 10, 5*time.Minute)
 	err = database.RunMigrations()
 	if err != nil {

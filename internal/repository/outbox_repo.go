@@ -43,7 +43,11 @@ func (r *OutboxRepository) FetchUnpublished(ctx context.Context, amount int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("outbox_repository: fetch published %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("outbox_repository: failed on close rows: %w", err)
+		}
+	}()
 
 	var events []domain.OutboxEvent
 	for rows.Next() {

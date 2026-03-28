@@ -22,6 +22,11 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
+        
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
 
   test:
     name: Build & Test
@@ -44,11 +49,6 @@ jobs:
 
       - name: Test
         run: go test ./... -v -race
-        
-      - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
-        with:
-          args: ./...
 
   docker:
     name: Docker Build
