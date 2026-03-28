@@ -41,9 +41,7 @@ func healthHandler(database *db.DB) http.HandlerFunc {
 			Status: status,
 			DB:     dbStatus,
 		}); err != nil {
-			status = "degraded"
-			dbStatus = "unreachable"
-			code = http.StatusServiceUnavailable
+			slog.Error("healthHandler: failed to encode response", "err", err)
 		}
 	}
 }
