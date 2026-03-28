@@ -7,7 +7,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 )
@@ -46,7 +45,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, domain.ErrInvalidMerchantID):
 			h.writeError(w, http.StatusUnprocessableEntity, "invalid_merchant_id", err.Error())
 		default:
-			slog.Error("unexpected error creating payment", "err", err, "path", sanitize(r.URL.Path), "method", r.Method)
+			slog.Error("unexpected error creating payment", "err", err, "method", r.Method)
 			h.writeError(w, http.StatusInternalServerError, "interal_error", "unexpected error")
 		}
 		return
@@ -106,7 +105,7 @@ func (h *Handler) TransitionPayment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, domain.ErrInvalidTransition):
 			h.writeError(w, http.StatusUnprocessableEntity, "invalid_transition", err.Error())
 		default:
-			slog.Error("failed to transition payment", "err", err, "action", sanitize(action), "id", sanitize(id))
+			slog.Error("failed to transition payment", "err", err)
 			h.writeError(w, http.StatusInternalServerError, "internal_error", "unexpected error")
 		}
 		return
@@ -141,12 +140,4 @@ func (h *Handler) writeError(w http.ResponseWriter, status int, code, message st
 		Code:    code,
 		Message: message,
 	})
-}
-
-func sanitize(s string) string {
-	return strings.NewReplacer(
-		"\n", "",
-		"\r", "",
-		"\t", "",
-	).Replace(s)
 }
