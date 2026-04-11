@@ -88,6 +88,14 @@ func (s *PaymentService) VoidPayment(ctx context.Context, id string) (*domain.Pa
 	return s.transition(ctx, domain.StatusVoided, id)
 }
 
+func (s *PaymentService) RefundPayment(ctx context.Context, id string) (*domain.Payment, error) {
+	return s.transition(ctx, domain.StatusRefunded, id)
+}
+
+func (s *PaymentService) SettlePayment(ctx context.Context, id string) (*domain.Payment, error) {
+	return s.transition(ctx, domain.StatusSettled, id)
+}
+
 func (s *PaymentService) transition(ctx context.Context, to domain.PaymentStatus, id string) (*domain.Payment, error) {
 	var payment *domain.Payment
 	var prevStatus domain.PaymentStatus
@@ -120,7 +128,7 @@ func (s *PaymentService) transition(ctx context.Context, to domain.PaymentStatus
 		return nil, err
 	}
 
-	metrics.PaymentTransitionTotal.WithLabelValues(string(prevStatus), string(to))
+	metrics.PaymentTransitionTotal.WithLabelValues(string(prevStatus), string(to)).Inc()
 
 	return payment, nil
 }
