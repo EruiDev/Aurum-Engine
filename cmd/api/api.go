@@ -80,8 +80,13 @@ func main() {
 	outboxRepo := repository.NewOutboxRepository(database.Conn())
 	paymentService := service.NewPaymentService(database, paymentRepo, outboxRepo)
 	paymentHandler := handler.NewHandler(paymentService)
-	publisher := publisher.NewKafkaPublisher(([]string{os.Getenv("KAFKA_BROKERS")}))
-	worker := worker.NewOutboxWorker(outboxRepo, publisher)
+	kafkaPublisher := publisher.NewKafkaPublisher(([]string{os.Getenv("KAFKA_BROKERS")}))
+	defer func() {
+		if err := kafkaPublisher.Close(); err != nil {
+			slog.Error("failed to close kafka publisher", "err", err)
+		}
+	}()
+	worker := worker.NewOutboxWorker(outboxRepo, kafkaPublisher)
 
 	mux := http.NewServeMux()
 
