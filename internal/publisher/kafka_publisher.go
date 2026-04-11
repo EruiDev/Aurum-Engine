@@ -3,7 +3,6 @@ package publisher
 import (
 	"aurum/internal/domain"
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -25,14 +24,9 @@ func NewKafkaPublisher(brokers []string) *KafkaPublisher {
 func (p *KafkaPublisher) Publish(ctx context.Context, event domain.OutboxEvent) error {
 	writer := p.writerForTopic(event.EventType)
 
-	payload, err := json.Marshal(event.Payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal event payload: %w", err)
-	}
-
 	msg := kafka.Message{
 		Key:   []byte(event.AggregateID.String()),
-		Value: payload,
+		Value: event.Payload,
 		Headers: []kafka.Header{
 			{Key: "event_id", Value: []byte(event.ID.String())},
 			{Key: "event_type", Value: []byte(event.EventType)},
