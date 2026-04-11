@@ -33,12 +33,10 @@ func (r *OutboxRepository) Insert(ctx context.Context, tx *sql.Tx, event *domain
 func (r *OutboxRepository) FetchUnpublished(ctx context.Context, amount int) ([]domain.OutboxEvent, error) {
 	defer metrics.TrackDB("payment.fetch_unpublished")()
 
-	// Have to add transaction for Locked
 	rows, err := r.db.QueryContext(ctx, `
 	SELECT id, aggregate_id, event_type, payload, created_at
 	FROM outbox_events WHERE published = false
 	ORDER BY created_at ASC
-	FOR UPDATE SKIP LOCKED
 	LIMIT $1`, amount)
 	if err != nil {
 		return nil, fmt.Errorf("outbox_repository: fetch published %w", err)
