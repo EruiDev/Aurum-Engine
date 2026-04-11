@@ -41,6 +41,16 @@ func (p *KafkaPublisher) Publish(ctx context.Context, event domain.OutboxEvent) 
 	return nil
 }
 
+func (p *KafkaPublisher) Close() error {
+	var firstErr error
+	for topic, w := range p.writers {
+		if err := w.Close(); err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("failed to close kafka writer for topic %s: %w", topic, err)
+		}
+	}
+	return firstErr
+}
+
 func (p *KafkaPublisher) writerForTopic(topic string) *kafka.Writer {
 	if w, ok := p.writers[topic]; ok {
 		return w

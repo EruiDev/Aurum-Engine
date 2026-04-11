@@ -91,8 +91,10 @@ func (h *Handler) TransitionPayment(w http.ResponseWriter, r *http.Request) {
 		payment, err = h.service.CapturePayment(r.Context(), id)
 	case "void":
 		payment, err = h.service.VoidPayment(r.Context(), id)
-	//case "refund":
-	//payment, err = h.service.RefundPayment(r.Context(), id)
+	case "refund":
+		payment, err = h.service.RefundPayment(r.Context(), id)
+	case "settle":
+		payment, err = h.service.SettlePayment(r.Context(), id)
 	default:
 		h.writeError(w, http.StatusNotFound, "unknown_action", "unknown action: "+action)
 		return
