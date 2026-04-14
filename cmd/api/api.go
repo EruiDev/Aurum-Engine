@@ -97,9 +97,18 @@ func main() {
 	mux.HandleFunc("GET /health", healthHandler(database))
 	mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)
 
+	rateLimitCfg := middleware.RateLimiterConfig{
+		Rate:  10,
+		Burst: 30,
+	}
+
+	handler := middleware.Metrics(
+		middleware.RateLimit(rateLimitCfg, "/health", "/metrics")(mux),
+	)
+
 	server := &http.Server{
 		Addr:         ":" + getPort(),
-		Handler:      middleware.Metrics(mux),
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
